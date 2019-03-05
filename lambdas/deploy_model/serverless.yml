@@ -1,0 +1,42 @@
+# Welcome to serverless. Read the docs
+# https://serverless.com/framework/docs/
+
+# Serverless.yml is the configuration the CLI
+# uses to deploy your code to your provider of choice
+
+# The `service` block is the name of the service
+service: serverless-deploy-model
+
+plugins:
+  - serverless-pseudo-parameters
+
+custom:
+  execRoleArn: { "Fn::Join" : ["", [ "arn:aws:iam::", { "Ref" : "AWS::AccountId" }, ":role/ecsTaskExecutionRole" ] ] }  
+
+# The `provider` block defines where your service will be deployed
+provider:
+  name: aws
+  runtime: nodejs6.10
+  # Allows the lambda to spin up an ecs task
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - ecs:RunTask
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - iam:PassRole
+      Resource: ${self:custom.execRoleArn}
+
+# The `functions` block defines what code to deploy
+functions:
+  deployModel:
+    handler: handler.deployModel
+    # The `events` block defines how to trigger the handler.deployModel code
+    events:
+      - http:
+          path: deploy-model
+          method: post
+          cors: true
+    environment:
+      ELECTION_MODEL_GITHUB_WEBHOOK_SECRET: ${ssm:Election_Model_GitHub_Webhook_Secret~true}
